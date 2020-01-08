@@ -25,7 +25,9 @@ def retrieve_census_data(area_df, var_list, year_min, year_max, acs=5):
         dataframe with state and county FIPs
     var_list : list
         list of strings corresponding to census variable names
-    year_min : first year to retureve
+    year_min : first year to retrieve
+        list of ints corresponding to the years of interest
+    year_max : last year to retrieve
         list of ints corresponding to the years of interest
     api_key : string
         private census api key value
@@ -47,20 +49,23 @@ def retrieve_census_data(area_df, var_list, year_min, year_max, acs=5):
     elif acs == 5:
         acs = c.acs5
 
-    for state in state_list:
-        census_dict = acs.state_county(var_list, state, Census.ALL, year=year)
-        census_df = pd.DataFrame.from_dict(census_dict)
-        counties = area_df[area_df['stateFips'] == state][['countyFips']]
-        census_df = census_df.merge(counties,
-                                    how='inner',
-                                    left_on='county',
-                                    right_on='countyFips')
-
-        if len(census_vars) == 0:
-            census_vars = census_df
-        else:
-            census_vars = pd.concat([census_vars, census_df],
-                                    ignore_index=True)
-    census_vars['year'] = year
+    for year in range(year_min, year_max+1):
+        for state in state_list:
+            census_dict = acs.state_county(var_list,
+                                           state,
+                                           Census.ALL,
+                                           year=year)
+            census_df = pd.DataFrame.from_dict(census_dict)
+            counties = area_df[area_df['stateFips'] == state][['countyFips']]
+            census_df = census_df.merge(counties,
+                                        how='inner',
+                                        left_on='county',
+                                        right_on='countyFips')
+            census_df['year'] = year
+            if len(census_vars) == 0:
+                census_vars = census_df
+            else:
+                census_vars = pd.concat([census_vars, census_df],
+                                        ignore_index=True)
 
     return census_vars
